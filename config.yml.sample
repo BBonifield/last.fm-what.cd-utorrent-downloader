@@ -1,0 +1,15 @@
+# interval that CRON job is scheduled to run (in minutes), set to 0 to bypass CRON setup and grab all albums in last.fm XML
+cron_interval : 15
+
+# last.fm auth information
+last_user    : johnsmith
+last_api_key : abc123abc123abc123abc123abc123abc123
+
+# what.cd auth information
+what_user     : johnsmith
+what_password : password
+
+# uTorrent WebUI auth information
+utorrent_url      : http://johnsmith.dnsdojo.com:8080/gui/
+utorrent_user     : johnsmith
+utorrent_password : password
