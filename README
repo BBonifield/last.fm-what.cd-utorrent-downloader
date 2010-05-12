@@ -1,0 +1,9 @@
+
+Setup instructions:
+
+1.) Go to last.fm and setup an API key.
+1.) Copy 'config.yml.sample' to 'config.yml'.
+2.) Put your personal config settings into 'config.yml'.
+3.) Setup CRON job and enjoy.
+    Example crontab entry (every 15 minutes):
+    */15    *   *   *   *   root    ruby /path/to/script/downloader.rb

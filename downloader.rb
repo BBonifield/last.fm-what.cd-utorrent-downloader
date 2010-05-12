@@ -13,8 +13,8 @@ require 'yaml'
 begin
     APP_CONFIG = YAML.load_file("config.yml")
 rescue Exception => e
-    APP_CONFIG['verbose'] and print "Failed to load config file.  Have you created your own config file yet?\n"
-    Process.exit
+    print "Failed to load config file.  Have you created your own config file yet?\n"
+    exit
 end
 
 albums_to_get        = [] # array of album hashes
@@ -22,21 +22,20 @@ torrents_to_get      = [] # array of torrent download URLs
 successful_additions = [] # array of albums that were actually downloaded
 
 # if running via a CRON job, only grab newly loved tracks from the last.fm API
+cutoff_time =
 if APP_CONFIG['cron_interval'] == 0
-    cutoff_time = -1
+   -1
 else
-    cutoff_time = (Time.new - (APP_CONFIG['cron_interval']*60)).utc.to_i
+   (Time.new - (APP_CONFIG['cron_interval']*60)).utc.to_i
 end
 
 url        = "http://ws.audioscrobbler.com/2.0/?method=user.getlovedtracks&user=#{APP_CONFIG['last_user']}&api_key=#{APP_CONFIG['last_api_key']}"
 resp       = Net::HTTP.get_response(URI.parse(url))
 loved_data = XmlSimple.xml_in(resp.body)
-if loved_data['lovedtracks'] && loved_data['lovedtracks'][0]['track'].length
+if loved_data['lovedtracks'] && loved_data['lovedtracks'][0]['track'].any?
     loved_data['lovedtracks'][0]['track'].each do |track|
-        if track['date'][0]['uts'].to_i < cutoff_time
-            # skip the remaining tracks because they're all below the cutoff time
-            break
-        end
+        # skip the remaining tracks because they're all below the cutoff time
+        break if track['date'][0]['uts'].to_i < cutoff_time
         
         artist     = track['artist'][0]['name'][0]
         name       = track['name'][0]
@@ -61,11 +60,11 @@ if loved_data['lovedtracks'] && loved_data['lovedtracks'][0]['track'].length
     end
 else
     APP_CONFIG['verbose'] and printf "ERROR: Couldn't load Last.fm loved tracks data for user: %s.  Exiting.\n", APP_CONFIG['last_user']
-    Process.exit
+    exit
 end
 
 # grab the torrent for each album from what
-if albums_to_get.length > 0
+if albums_to_get.any?
     a = Mechanize.new
     a.get('http://what.cd/') do |page|
         # Click login link
@@ -89,7 +88,7 @@ if albums_to_get.length > 0
         
             # since we're ordering by number of snatches, grab the link for the most popular torrent
             dl_links = results_page.links_with(:text => 'DL', :href => /^torrents\.php\?action=download/)
-            if dl_links.length > 0
+            if dl_links.any?
                 album['url'] = "http://what.cd/" + dl_links[0].href
                 torrents_to_get.push( album )
             else
@@ -100,7 +99,7 @@ if albums_to_get.length > 0
 end
 
 # upload each torrent to uTorrent WebUI
-if torrents_to_get.length > 0
+if torrents_to_get.any?
     a = Mechanize.new
     a.auth(APP_CONFIG['utorrent_user'], APP_CONFIG['utorrent_password'])
     a.get(APP_CONFIG['utorrent_url']) do |page|
@@ -117,9 +116,9 @@ if torrents_to_get.length > 0
                 end
                 if torrent_name
                     # store torrent file so it can be uploaded to uTorrent WebUI
-                    open(torrent_name, "wb") { |file|
+                    open(torrent_name, "wb") do |file|
                         file.write( c.body_str )
-                    }
+                    end
                     # upload it
                     page.form_with(:action => "./?action=add-file") do |f|
                         f.file_uploads.first.file_name = torrent_name
